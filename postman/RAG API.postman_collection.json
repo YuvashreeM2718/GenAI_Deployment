@@ -1,0 +1,300 @@
+{
+  "info": {
+    "_postman_id": "4a8dd931-5d99-4b28-94b0-fa700ff139bd",
+    "name": "RAG API",
+    "description": "Postman collection for the RAG API (FastAPI, fully async).\n\n## How to use\n1. Set the `base_url` variable if your server isn't on http://localhost:8000.\n2. Run **Auth → Register** (once), then **Auth → Sign In** — the sign-in request automatically saves the returned `access_token` into the `{{token}}` variable.\n3. Every other request inherits `Authorization: Bearer {{token}}` automatically.\n\nNotes: `/signin` takes a JSON body `{username, password}` (username = your email). For **Delete**, set the `doc_id` variable to a document id from **Read**.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "49731182",
+    "_collection_link": "https://go.postman.co/collection/49731182-4a8dd931-5d99-4b28-94b0-fa700ff139bd?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user1@example.com\",\n  \"password\": \"secret123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "register"
+              ]
+            },
+            "description": "Create a new user. Returns {id, email, created_at}."
+          },
+          "response": []
+        },
+        {
+          "name": "Sign In",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json && json.access_token) {",
+                  "    pm.collectionVariables.set('token', json.access_token);",
+                  "    console.log('Saved access_token to the {{token}} variable.');",
+                  "}",
+                  "pm.test('Status is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Got an access_token', function () {",
+                  "    pm.expect(pm.response.json().access_token).to.be.a('string');",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"user1@example.com\",\n  \"password\": \"secret123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/signin",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "signin"
+              ]
+            },
+            "description": "Log in (username = email). Saves the returned access_token to {{token}} automatically."
+          },
+          "response": []
+        },
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "me"
+              ]
+            },
+            "description": "Return the current authenticated user. Requires a Bearer token."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Documents",
+      "item": [
+        {
+          "name": "Upload PDF",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "description": "Select a PDF file to upload",
+                  "src": "/Users/prateekmishra/Desktop/Vector_1/data/pdf/statement_bank.pdf"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/upload",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "upload"
+              ]
+            },
+            "description": "Upload one PDF (form-data key 'file'). De-duplicated: re-uploading the same file is skipped."
+          },
+          "response": []
+        },
+        {
+          "name": "Process repo folder",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/process",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "process"
+              ]
+            },
+            "description": "Process every PDF in the server's repo folder (data/repo). Skips already-processed files."
+          },
+          "response": []
+        },
+        {
+          "name": "Read (my documents)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/read",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "read"
+              ]
+            },
+            "description": "List the current user's documents."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete document",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/delete/{{doc_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "delete",
+                "{{doc_id}}"
+              ]
+            },
+            "description": "Delete a document and its vectors by id. Set the {{doc_id}} variable first."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Chat",
+      "item": [
+        {
+          "name": "Ask a question",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"sum of all transection from the card end with 8004\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/chat",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "chat"
+              ]
+            },
+            "description": "Ask a question over your documents (hybrid retrieval + rerank + multimodal answer)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/health",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "health"
+          ]
+        },
+        "description": "Liveness check — returns {status: ok}."
+      },
+      "response": []
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "doc_id",
+      "value": "1",
+      "type": "string"
+    }
+  ]
+}

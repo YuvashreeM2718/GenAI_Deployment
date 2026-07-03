@@ -1,0 +1,39 @@
+# --- Secrets / config ---
+.env
+.env.*
+!.env.example
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# --- Virtual environments ---
+ragEnd/
+venv/
+.venv/
+env/
+
+# --- Uploaded / processed data (runtime, not source) ---
+data/uploads/
+data/repo/
+*.pdf
+
+# --- Databases (if SQLite is ever used locally) ---
+*.db
+*.sqlite3
+
+# --- Tooling caches ---
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# --- Editor / OS ---
+.DS_Store
+.idea/
+.vscode/
