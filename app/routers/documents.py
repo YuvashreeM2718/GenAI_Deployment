@@ -10,6 +10,7 @@ from ..db import get_db
 from ..models import Document, User
 from ..schemas import DocumentOut, ProcessResponse
 from ..security import get_current_user
+from ..rag.ingest import process_pdf
 
 settings = get_settings()
 router = APIRouter(tags=["documents"])
@@ -34,9 +35,8 @@ async def upload(
     
     file_hash = hashlib.sha256(content).hexdigest()
     isFile = await _find_by_hash(session, user.id, file_hash)
-    print(isFile)
     if isFile:
-        return isFile
+        return {"doc":isFile}
     
     user_dir = os.path.join(settings.upload_dir, str(user.id))
     os.makedirs(user_dir, exist_ok=True)
@@ -53,7 +53,14 @@ async def upload(
     await session.commit()
     await session.refresh(doc)
     
-    return {"Status":doc }
+    pages = await process_pdf(user.id, doc.id, path, file.filename)
+    doc.status = "ready"
+    doc.pages = pages
+    session.add(doc)
+    await session.commit()
+    await session.refresh(doc)
+    
+    return {"doc":doc }
 
 
 @router.post("/process", response_model=ProcessResponse)

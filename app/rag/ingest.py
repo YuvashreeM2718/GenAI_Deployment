@@ -1,4 +1,4 @@
-import asyncio, base64, gc, hashlib, uuid, pymupdf, httpx
+import asyncio, base64, gc, uuid, pymupdf, httpx
 from qdrant_client import models
 import cohere
 from ..config import get_settings
@@ -28,10 +28,10 @@ def _is_visual(page:pymupdf.Page) -> bool:
 
 def _page_data_url(page:pymupdf.Page) -> str:
     png = page.get_pixmap(dpi=settings.image_embed_dpi).tobytes("png")
-    return f"data:image/png;base64, {base64.b64encode(png).decode()}"
+    return f"data:image/png;base64,{base64.b64encode(png).decode()}"
 
 
-async def _embed(co:cohere.AsyncClientV2, texts = None, images = None, input_type = "search_documents", max_retry: int = 3):    
+async def _embed(co:cohere.AsyncClientV2, texts = None, images = None, input_type = "search_documents", max_retry: int = 3):        
     args = {
         "model":settings.embed_model,
         "input_type":input_type,
@@ -58,12 +58,13 @@ async def _embed(co:cohere.AsyncClientV2, texts = None, images = None, input_typ
                 
         
 
-async def _embed_images(co:cohere.AsyncClientV2, images: list):
+async def _embed_images(co:cohere.AsyncClientV2, allimages: list):
 
     out = {}
-    for start in range(0, len(images), settings.image_embed_batch):
-        chunk = images[start : start + settings.image_embed_batch]
-        vectors = await _embed(co, images=[d["data_url"] for d in chunk])
+    for start in range(0, len(allimages), settings.image_embed_batch):
+        chunk = allimages[start : (start + settings.image_embed_batch)]
+        images = [d["data_url"] for d in chunk]                    
+        vectors = await _embed(co, images=images)
         
         for index, vector in enumerate(vectors):
             c = chunk[index]
@@ -80,6 +81,49 @@ async def process_pdf(user_id:int, doc_id: int, path: str, fileName: str) -> int
     text_chunks = []
     image_chunks = []
     total = 0
+    
+    
+    async def flush():
+        if (len(text_chunks) + len(image_chunks)) == 0:
+            return;
+               
+        text_embeddings = [] if len(text_chunks) == 0 else await _embed(co, texts=[c["text"] for c in text_chunks ])
+        image_embeddings = {} if len(image_chunks) == 0 else await _embed_images(co, image_chunks)
+        
+        points = []
+        for index, vector in enumerate(text_embeddings):
+            chunk = text_chunks[index]        
+            point = models.PointStruct(
+                id = chunk["id"],
+                vector= {
+                    "dense": vector,
+                    "bm25": models.Document(text=chunk["text"], model="Qdrant/bm25")
+                },
+                payload=chunk
+            )        
+            points.append(point)
+            
+            
+        for index, chunk in enumerate(image_chunks):
+            vector = image_embeddings[chunk["id"]]   
+            point = models.PointStruct(
+                id = chunk["id"],
+                vector= {
+                    "dense": vector
+                },
+                payload=chunk
+            )        
+            
+            points.append(point)
+            
+        
+        await qdr.upsert(settings.qdrant_collection, points=points)                
+
+        points.clear()
+        text_chunks.clear()
+        image_chunks.clear()
+        gc.collect()  
+    
     for i in range(len(docs)):
         page = docs[i]
         isVisual = _is_visual(page)
@@ -106,16 +150,12 @@ async def process_pdf(user_id:int, doc_id: int, path: str, fileName: str) -> int
         total += 1
         
         if total >= settings.ingest_batch:
-            ### process our all chunks....
-            text_embeddings = await _embed(co, texts=[c["text"] for c in text_chunks ])
-            image_embeddings = await _embed_images(co, image_chunks)
-            
-            
+            print("Total", total)
+            await flush()
             total = 0
-            text_chunks.clear()
-            image_chunks.clear()
-        
-    
+
+    await flush()  
+    return len(docs)
 
             
         
@@ -132,3 +172,4 @@ async def process_pdf(user_id:int, doc_id: int, path: str, fileName: str) -> int
 
 
 #### per min call - max token = 
+

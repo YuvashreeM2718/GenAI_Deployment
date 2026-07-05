@@ -4,7 +4,7 @@ settings = get_settings()
 import cohere
 from openai import AsyncOpenAI
 from qdrant_client import AsyncQdrantClient, models
-
+from langchain_openai import ChatOpenAI
 
 def cohere_client() -> cohere.AsyncClientV2:
     return cohere.AsyncClientV2(api_key=settings.cohere_api_key)
@@ -13,8 +13,8 @@ def qdrant_client() -> AsyncQdrantClient:
     return AsyncQdrantClient(url=settings.qdrant_url)
 
 
-def openai_client() -> AsyncOpenAI:
-    return AsyncOpenAI(api_key=settings.openai_api_key)
+def openai_client(model_name = "gpt-4.1") -> ChatOpenAI:
+    return ChatOpenAI(api_key=settings.openai_api_key, model=model_name)
 
 
 async def ensure_collection() -> None:
