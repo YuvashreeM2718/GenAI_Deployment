@@ -5,10 +5,10 @@ from ..config import get_settings
 from .clients import cohere_client, qdrant_client
 
 settings = get_settings()
-NS = uuid.UUID("179c61d7-a347-42db-afa8-3709fb25f3ee")
+NS = uuid.UUID(settings.NS)
 
 def chunk_id(doc_id:int, page:int) -> str:
-    return str(uuid.uuid5(NS, f"{doc_id}:{page}"))
+    return uuid.uuid5(NS, f"{doc_id}:{page}")
 
 def _is_visual(page:pymupdf.Page) -> bool:
     if not page.get_text().strip():
@@ -32,22 +32,22 @@ def _page_data_url(page:pymupdf.Page) -> str:
 
 
 async def _embed(co:cohere.AsyncClientV2, texts = None, images = None, input_type = "search_documents", max_retry: int = 3):        
-    args = {
+    kwargs = {
         "model":settings.embed_model,
         "input_type":input_type,
         "embedding_types" : ["float"]
     }
     
     if texts is not None:
-        args["texts"] = texts
+        kwargs["texts"] = texts
         
     if images is not None:
-        args["images"] = images
+        kwargs["images"] = images
     
     last_error = None
     for attempt in range(max_retry):
         try:
-            response = await co.embed(**args)
+            response = await co.embed(**kwargs)
             return [list(value) for value in response.embeddings.float_]
         except httpx.TransportError as error:
             last_error = error
@@ -105,7 +105,8 @@ async def process_pdf(user_id:int, doc_id: int, path: str, fileName: str) -> int
             
             
         for index, chunk in enumerate(image_chunks):
-            vector = image_embeddings[chunk["id"]]   
+            vector = image_embeddings[chunk["id"]]  
+            chunk.pop("data_url") 
             point = models.PointStruct(
                 id = chunk["id"],
                 vector= {
@@ -150,7 +151,6 @@ async def process_pdf(user_id:int, doc_id: int, path: str, fileName: str) -> int
         total += 1
         
         if total >= settings.ingest_batch:
-            print("Total", total)
             await flush()
             total = 0
 

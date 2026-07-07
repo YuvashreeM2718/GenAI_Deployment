@@ -11,6 +11,7 @@ from ..models import Document, User
 from ..schemas import DocumentOut, ProcessResponse
 from ..security import get_current_user
 from ..rag.ingest import process_pdf
+from ..rag.retrieve import delete_document_vectors
 
 settings = get_settings()
 router = APIRouter(tags=["documents"])
@@ -42,6 +43,9 @@ async def upload(
     os.makedirs(user_dir, exist_ok=True)
     path = os.path.join(user_dir, file.filename)
     
+    ### YOU have to sole it....
+    ### add some unique prefix to file
+    ### error this file name already exist
     with open(path, "wb") as f:
         f.write(content)
         
@@ -54,6 +58,7 @@ async def upload(
     await session.refresh(doc)
     
     pages = await process_pdf(user.id, doc.id, path, file.filename)
+    
     doc.status = "ready"
     doc.pages = pages
     session.add(doc)
@@ -82,9 +87,13 @@ async def delete(doc_id: int, user: User = Depends(get_current_user), session: A
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Document not found")
 
     #### delete emebeddings
-    
+    await delete_document_vectors(doc.id)   
+     
     if doc.path.startswith(settings.upload_dir) and os.path.exists(doc.path):
         os.remove(doc.path)                      
     await session.delete(doc)
     await session.commit()
     return {"deleted": doc_id}
+
+
+#### You have to deploy this complete project on Docker.

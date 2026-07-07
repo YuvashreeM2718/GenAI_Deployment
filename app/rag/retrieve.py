@@ -68,7 +68,6 @@ async def reranker(query:str, points:list[models.PointStruct], k : int = 4):
        
     result = await co.rerank(model=settings.rerank_model, query=query, documents=docs, top_n=k)
     reOrder = [points[r.index] for r in result.results]
-    
     return reOrder
 
 
@@ -125,6 +124,20 @@ async def generate(query:str, user_id:int):
     
     return res.content
     
+    
+async def delete_document_vectors(doc_id:int):
+    qrd = qdrant_client()
+    await qrd.delete(settings.qdrant_collection, 
+                     models.Filter(
+                        must=[
+                            models.FieldCondition(
+                                key="doc_id",
+                                match=models.MatchValue(value=doc_id)
+                            )
+                        ]
+                    ) 
+                )
+    return True
 
     
     

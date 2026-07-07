@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     candidate_k: int = 30                  # hybrid candidates before reranking
     top_k: int = 8                         # reranked hits kept
     max_context_images: int = 4            # cap page images sent to the LLM
+    
+    NS: str = ""
 
 
 @lru_cache
