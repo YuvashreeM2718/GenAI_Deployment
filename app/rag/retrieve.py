@@ -64,13 +64,10 @@ async def reranker(query:str, points:list[models.PointStruct], k : int = 4):
             docs.append(p.payload.get("text"))
         else:
             docs.append(f"{p.payload.get("source")} p.{p.payload["page"]}")
-
-       
     result = await co.rerank(model=settings.rerank_model, query=query, documents=docs, top_n=k)
     reOrder = [points[r.index] for r in result.results]
+
     return reOrder
-
-
 
 async def retrieve(user_id: int, query: str):
     hybridPoints = await hybrid_search(user_id, query, settings.candidate_k)
@@ -114,7 +111,7 @@ def _build_message(query, contexts: list[models.PointStruct]):
     return content
 
 async def generate(query:str, user_id:int):
-    context = await retrieve(user_id, query)
+    context = await retrieve(user_id, query) 
     llm = openai_client()
     
     res = await llm.ainvoke([
@@ -124,22 +121,20 @@ async def generate(query:str, user_id:int):
     
     return res.content
     
-    
-async def delete_document_vectors(doc_id:int):
-    qrd = qdrant_client()
-    await qrd.delete(settings.qdrant_collection, 
-                     models.Filter(
-                        must=[
-                            models.FieldCondition(
-                                key="doc_id",
-                                match=models.MatchValue(value=doc_id)
-                            )
-                        ]
-                    ) 
-                )
-    return True
 
     
     
+    
+async def delete_vector_points(doc_id):
+    qdr = qdrant_client()
+    await qdr.delete(settings.qdrant_collection, models.Filter(
+                must=[
+                        models.FieldCondition(
+                            key="doc_id",
+                            match=models.MatchValue(value=doc_id)
+                        )
+                    ]
+    ))
+    return True
     
     

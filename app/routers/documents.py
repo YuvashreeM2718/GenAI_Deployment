@@ -4,14 +4,13 @@ import os
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from ..rag.retrieve import delete_vector_points
 from ..config import get_settings
 from ..db import get_db
 from ..models import Document, User
 from ..schemas import DocumentOut, ProcessResponse
 from ..security import get_current_user
 from ..rag.ingest import process_pdf
-from ..rag.retrieve import delete_document_vectors
 
 settings = get_settings()
 router = APIRouter(tags=["documents"])
@@ -36,16 +35,13 @@ async def upload(
     
     file_hash = hashlib.sha256(content).hexdigest()
     isFile = await _find_by_hash(session, user.id, file_hash)
-    if isFile:
+    if isFile: ## None, {}
         return {"doc":isFile}
     
     user_dir = os.path.join(settings.upload_dir, str(user.id))
     os.makedirs(user_dir, exist_ok=True)
     path = os.path.join(user_dir, file.filename)
     
-    ### YOU have to sole it....
-    ### add some unique prefix to file
-    ### error this file name already exist
     with open(path, "wb") as f:
         f.write(content)
         
@@ -56,7 +52,7 @@ async def upload(
     session.add(doc)
     await session.commit()
     await session.refresh(doc)
-    
+
     pages = await process_pdf(user.id, doc.id, path, file.filename)
     
     doc.status = "ready"
@@ -71,7 +67,10 @@ async def upload(
 @router.post("/process", response_model=ProcessResponse)
 async def process(user: User = Depends(get_current_user), session: AsyncSession = Depends(get_db)):
     processed, skipped = [], []
-
+    ### list all the pdfs (files) : 
+    ### read one to one pdf
+    
+    
     return ProcessResponse(processed=processed, skipped=skipped)
 
 
@@ -87,8 +86,8 @@ async def delete(doc_id: int, user: User = Depends(get_current_user), session: A
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Document not found")
 
     #### delete emebeddings
-    await delete_document_vectors(doc.id)   
-     
+    await delete_vector_points(doc.id)
+    
     if doc.path.startswith(settings.upload_dir) and os.path.exists(doc.path):
         os.remove(doc.path)                      
     await session.delete(doc)

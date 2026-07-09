@@ -8,8 +8,7 @@ router = APIRouter(tags=["chat"])
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest, user: User = Depends(get_current_user)):
-    
-    ### reter gener answer
+
     answer = await generate(req.question, user.id)
     
     return ChatResponse(answer=answer, sources=["This is my source"])

@@ -58,19 +58,17 @@ async def _embed(co:cohere.AsyncClientV2, texts = None, images = None, input_typ
                 
         
 
-async def _embed_images(co:cohere.AsyncClientV2, allimages: list):
+async def _embed_images(co:cohere.AsyncClientV2, allimages: list):  ## 16
 
-    out = {}
-    for start in range(0, len(allimages), settings.image_embed_batch):
+    finalVectors = []
+    for start in range(0, len(allimages), settings.image_embed_batch):  ### 4
         chunk = allimages[start : (start + settings.image_embed_batch)]
         images = [d["data_url"] for d in chunk]                    
         vectors = await _embed(co, images=images)
+        finalVectors.extend(vectors)
         
-        for index, vector in enumerate(vectors):
-            c = chunk[index]
-            out[c["id"]] = vector
-            
-    return out
+    return finalVectors
+        
             
         
 async def process_pdf(user_id:int, doc_id: int, path: str, fileName: str) -> int:
@@ -86,9 +84,9 @@ async def process_pdf(user_id:int, doc_id: int, path: str, fileName: str) -> int
     async def flush():
         if (len(text_chunks) + len(image_chunks)) == 0:
             return;
-               
-        text_embeddings = [] if len(text_chunks) == 0 else await _embed(co, texts=[c["text"] for c in text_chunks ])
-        image_embeddings = {} if len(image_chunks) == 0 else await _embed_images(co, image_chunks)
+
+        text_embeddings = [] if len(text_chunks) == 0 else await _embed(co, texts=[c.get("text") for c in text_chunks ])
+        image_embeddings = [] if len(image_chunks) == 0 else await _embed_images(co, image_chunks)
         
         points = []
         for index, vector in enumerate(text_embeddings):
@@ -103,9 +101,8 @@ async def process_pdf(user_id:int, doc_id: int, path: str, fileName: str) -> int
             )        
             points.append(point)
             
-            
-        for index, chunk in enumerate(image_chunks):
-            vector = image_embeddings[chunk["id"]]  
+        for index, vector in enumerate(image_embeddings):
+            chunk = image_chunks[index]
             chunk.pop("data_url") 
             point = models.PointStruct(
                 id = chunk["id"],
@@ -124,6 +121,8 @@ async def process_pdf(user_id:int, doc_id: int, path: str, fileName: str) -> int
         text_chunks.clear()
         image_chunks.clear()
         gc.collect()  
+    
+    ### 11 - Pages
     
     for i in range(len(docs)):
         page = docs[i]
