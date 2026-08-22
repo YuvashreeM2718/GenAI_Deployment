@@ -83,7 +83,8 @@ jobs:
           --task-definition ${{ env.ECS_TASK_FAMILY }} \
           --query taskDefinition \
           | jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes,
-                    .compatibilities, .registeredAt, .registeredBy)' \
+          .compatibilities, .registeredAt, .registeredBy,
+          .deregisteredAt, .enableFaultInjection)' \
           > ${{ env.ECS_TASK_DEFINITION }}
 
     - name: Fill in the new image ID in the Amazon ECS task definition
