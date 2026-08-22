@@ -4,13 +4,12 @@ import os
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from ..rag.retrieve import delete_vector_points
 from ..config import get_settings
 from ..db import get_db
 from ..models import Document, User
 from ..schemas import DocumentOut, ProcessResponse
 from ..security import get_current_user
-from ..rag.ingest import process_pdf
+from ..s3 import upload_file
 
 settings = get_settings()
 router = APIRouter(tags=["documents"])
@@ -33,30 +32,21 @@ async def upload(
     
     content = await file.read()
     
+    if len(content) > (settings.max_upload_mb * 1024 * 1024):
+        return HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, f"File is larger then {settings.max_upload_mb} MB")
+        
+    
     file_hash = hashlib.sha256(content).hexdigest()
     isFile = await _find_by_hash(session, user.id, file_hash)
     if isFile: ## None, {}
         return {"doc":isFile}
     
-    user_dir = os.path.join(settings.upload_dir, str(user.id))
-    os.makedirs(user_dir, exist_ok=True)
-    path = os.path.join(user_dir, file.filename)
     
-    with open(path, "wb") as f:
-        f.write(content)
+    key = upload_file(user.id, fileName=file.filename, content=content, content_type=file.content_type )
+    
         
     doc = Document(user_id=user.id, filename=file.filename, 
-                   file_hash=file_hash, 
-                   path=path,
-                   status="processing")
-    session.add(doc)
-    await session.commit()
-    await session.refresh(doc)
-
-    pages = await process_pdf(user.id, doc.id, path, file.filename)
-    
-    doc.status = "ready"
-    doc.pages = pages
+                   file_hash=file_hash, s3_key=key)
     session.add(doc)
     await session.commit()
     await session.refresh(doc)
@@ -85,13 +75,6 @@ async def delete(doc_id: int, user: User = Depends(get_current_user), session: A
     if not doc or doc.user_id != user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Document not found")
 
-    #### delete emebeddings
-    await delete_vector_points(doc.id)
-    
-    if doc.path.startswith(settings.upload_dir) and os.path.exists(doc.path):
-        os.remove(doc.path)                      
-    await session.delete(doc)
-    await session.commit()
     return {"deleted": doc_id}
 
 
