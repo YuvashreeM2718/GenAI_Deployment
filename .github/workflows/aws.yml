@@ -22,8 +22,8 @@ on:
 env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: fastapi-apis-registry
-  ECS_CLUSTER: rare-elephant-g2j754
-  ECS_SERVICE: frugal-server-auwexo-service-l211waqj
+  ECS_CLUSTER: brave-cat-xzjk5z
+  ECS_SERVICE: frugal-server-auwexo-service-dcu1h1om
   ECS_TASK_FAMILY: frugal-server-auwexo       # family registered in ECS
   ECS_TASK_DEFINITION: task-definition.json   # local file the render step reads
   CONTAINER_NAME: Main-container              # matches containerDefinitions[].name
