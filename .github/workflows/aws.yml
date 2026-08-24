@@ -1,28 +1,14 @@
-# This workflow will build and push a new container image to Amazon ECR,
-# and then will deploy a new task definition to Amazon ECS, when there is a push to the "main" branch.
+# Build a linux/arm64 container image, push it to Amazon ECR, and deploy a new
+# task definition to Amazon ECS on every push to the "cloud_rag_apis" branch.
 #
-# To use this workflow, you will need to complete the following set-up steps:
+# The ECS service runs on Fargate with runtimePlatform.cpuArchitecture = ARM64,
+# so the image MUST be built for linux/arm64. GitHub's ubuntu-latest runners are
+# x86_64, so we cross-build with Buildx + QEMU emulation.
 #
-# 1. Create an ECR repository to store your images.
-#    For example: `aws ecr create-repository --repository-name my-ecr-repo --region us-east-2`.
-#    Replace the value of the `ECR_REPOSITORY` environment variable in the workflow below with your repository's name.
-#    Replace the value of the `AWS_REGION` environment variable in the workflow below with your repository's region.
-#
-# 2. Create an ECS task definition, an ECS cluster, and an ECS service.
-#    For example, follow the Getting Started guide on the ECS console:
-#      https://us-east-2.console.aws.amazon.com/ecs/home?region=us-east-2#/firstRun
-#    Replace the value of the `ECS_SERVICE` environment variable in the workflow below with the name you set for the Amazon ECS service.
-#    Replace the value of the `ECS_CLUSTER` environment variable in the workflow below with the name you set for the cluster.
-#
-# 3. Store your ECS task definition as a JSON file in your repository.
-#    The format should follow the output of `aws ecs register-task-definition --generate-cli-skeleton`.
-#    Replace the value of the `ECS_TASK_DEFINITION` environment variable in the workflow below with the path to the JSON file.
-#    Replace the value of the `CONTAINER_NAME` environment variable in the workflow below with the name of the container
-#    in the `containerDefinitions` section of the task definition.
-#
-# 4. Store an IAM user access key in GitHub Actions secrets named `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`.
-#    See the documentation for each action used below for the recommended IAM policies for this IAM user,
-#    and best practices on handling the access key credentials.
+# Required GitHub Actions secrets: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+# Required IAM permissions: ecr:*, ecs:DescribeTaskDefinition,
+#   ecs:RegisterTaskDefinition, ecs:UpdateService, ecs:DescribeServices,
+#   iam:PassRole (for the task execution role)
 
 name: Deploy to Amazon ECS
 
@@ -31,17 +17,14 @@ on:
     branches: [ "cloud_rag_apis" ]
 
 env:
-  ECS_TASK_DEFINITION: task-definition.json
-  ECS_TASK_FAMILY: rag-apis-task
-  AWS_REGION: us-east-1                   # set this to your preferred AWS region, e.g. us-west-1
-  ECR_REPOSITORY: fastapi-apis-registry           # set this to your Amazon ECR repository name
-  ECS_SERVICE: rag-apis-task-service-9ylz6s2a                 # set this to your Amazon ECS service name
-  ECS_CLUSTER: rare-elephant-g2j754                 # set this to your Amazon ECS cluster name
-  # ECS_TASK_DEFINITION: .aws/task-definition.json
-                                               # set this to the path to your Amazon ECS task definition
-                                               # file, e.g. .aws/task-definition.json
-  CONTAINER_NAME: rag-api-container           # set this to the name of the container in the
-                                               # containerDefinitions section of your task definition
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: fastapi-apis-registry
+  ECS_SERVICE: rag-apis-task-service-9ylz6s2a
+  ECS_CLUSTER: rare-elephant-g2j754
+  ECS_TASK_FAMILY: rag-apis-task            # family name registered in ECS
+  ECS_TASK_DEFINITION: task-definition.json # local file the render step reads
+  CONTAINER_NAME: rag-api-container         # must match containerDefinitions[].name
+  BUILD_PLATFORM: linux/arm64               # must match runtimePlatform in the task def
 
 permissions:
   contents: read
@@ -57,7 +40,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v1
+      uses: aws-actions/configure-aws-credentials@v4
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -65,42 +48,89 @@ jobs:
 
     - name: Login to Amazon ECR
       id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v1
+      uses: aws-actions/amazon-ecr-login@v2
+
+    # Registers QEMU binfmt handlers so the x86_64 runner can execute arm64
+    # instructions during `pip install`. This is what makes the cross-build work.
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+      with:
+        platforms: arm64
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
 
     - name: Build, tag, and push image to Amazon ECR
       id: build-image
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        IMAGE_TAG: ${{ github.sha }}
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        platforms: ${{ env.BUILD_PLATFORM }}
+        push: true
+        provenance: false          # keep a plain image manifest; ECS dislikes attestation indexes
+        tags: |
+          ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+          ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Export image reference
+      id: image
       run: |
-        # Build a docker container and
-        # push it to ECR so that it can
-        # be deployed to ECS.
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
-    
+        echo "uri=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+
     - name: Download task definition
       run: |
         aws ecs describe-task-definition \
-          --task-definition ${{ env.ECS_TASK_FAMILY }} \
+          --task-definition "$ECS_TASK_FAMILY" \
           --query taskDefinition \
-          | jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes,
-                    .compatibilities, .registeredAt, .registeredBy)' \
-          > ${{ env.ECS_TASK_DEFINITION }}
+        | jq '{family, taskRoleArn, executionRoleArn, networkMode,
+               containerDefinitions, volumes, placementConstraints,
+               requiresCompatibilities, cpu, memory, tags, pidMode, ipcMode,
+               proxyConfiguration, inferenceAccelerators, ephemeralStorage,
+               runtimePlatform}
+              | with_entries(select(.value != null))' \
+        > "$ECS_TASK_DEFINITION"
+
+        echo "Task definition runtimePlatform:"
+        jq -c '.runtimePlatform' "$ECS_TASK_DEFINITION"
+
+    # Fail fast with a clear message if the image arch and the task definition
+    # disagree, instead of waiting 10 minutes for service stability to time out.
+    - name: Assert image architecture matches task definition
+      run: |
+        TD_ARCH=$(jq -r '.runtimePlatform.cpuArchitecture // "X86_64"' "$ECS_TASK_DEFINITION")
+        IMG_ARCH=$(docker buildx imagetools inspect "${{ steps.image.outputs.uri }}" --raw \
+                   | jq -r '(.manifests[0].platform.architecture) // "unknown"')
+
+        # ECS uses X86_64/ARM64; OCI manifests use amd64/arm64.
+        case "$TD_ARCH" in
+          ARM64)  WANT=arm64 ;;
+          X86_64) WANT=amd64 ;;
+          *)      WANT=unknown ;;
+        esac
+
+        echo "Task definition wants: $TD_ARCH ($WANT)"
+        echo "Image manifest arch:   $IMG_ARCH"
+
+        if [ "$IMG_ARCH" != "$WANT" ] && [ "$IMG_ARCH" != "unknown" ]; then
+          echo "::error::Architecture mismatch. The task definition requires $TD_ARCH but the image is $IMG_ARCH. Set BUILD_PLATFORM to linux/$WANT."
+          exit 1
+        fi
 
     - name: Fill in the new image ID in the Amazon ECS task definition
       id: task-def
-      uses: aws-actions/amazon-ecs-render-task-definition@v1
+      uses: aws-actions/amazon-ecs-render-task-definition@v2
       with:
         task-definition: ${{ env.ECS_TASK_DEFINITION }}
         container-name: ${{ env.CONTAINER_NAME }}
-        image: ${{ steps.build-image.outputs.image }}
+        image: ${{ steps.image.outputs.uri }}
 
     - name: Deploy Amazon ECS task definition
-      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v2
       with:
         task-definition: ${{ steps.task-def.outputs.task-definition }}
         service: ${{ env.ECS_SERVICE }}
         cluster: ${{ env.ECS_CLUSTER }}
         wait-for-service-stability: true
+        wait-for-minutes: 15
