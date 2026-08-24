@@ -28,7 +28,7 @@ name: Deploy to Amazon ECS
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "cloud_rag_apis" ]
 
 env:
   ECS_TASK_DEFINITION: task-definition.json
