@@ -1,4 +1,4 @@
-# RAG API — End-to-End Retrieval-Augmented Generation Service
+# RAG API — End-to-End Retrieval-Augmented Generation Service with GitHub Automation Workflows
 
 A small, production-shaped **fully async** FastAPI service: users register, upload PDFs, and chat with them.
 Retrieval is **multimodal hybrid RAG** (Cohere embeddings + Qdrant BM25, Cohere rerank, neighbour-page
