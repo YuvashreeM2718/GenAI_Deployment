@@ -1,18 +1,19 @@
 import psycopg2
+import boto3
 
-password = "Prateek1234"
+password = "Yuvashree2718"
 
 conn = None
 try:
-    print("Connection Start")
+    print("Connection start")
     conn = psycopg2.connect(
-        host='reg-api-db.cajuqiq0k7h4.us-east-1.rds.amazonaws.com',
+        host='cloud-rag-apis.cqvqyakecocp.us-east-1.rds.amazonaws.com',
         port=5432,
         database='postgres',
         user='postgres',
         password=password
     )
-    print("Connection Done")
+    print("Connection done")
     cur = conn.cursor()
     cur.execute('SELECT version();')
     print(cur.fetchone()[0])
