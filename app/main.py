@@ -12,4 +12,4 @@ app.include_router(chat.router)
 
 @app.get("/health", tags=["health"])
 def health():
-    return {"status": "OK", "message":"This is my new deployment"}
+    return {"status": "OK", "message":"This is my aws cloud deployment"}
