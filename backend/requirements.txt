@@ -1,0 +1,14 @@
+fastapi[standard]
+uvicorn[standard]
+pydantic-settings
+qdrant-client
+httpx
+python-dotenv
+sqlalchemy
+psycopg[binary,pool]
+langgraph
+langgraph-checkpoint-postgres
+langchain-core
+langchain-ollama
+langchain-qdrant
+mcp

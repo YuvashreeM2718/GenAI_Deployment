@@ -1,0 +1,155 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #f4f5f7;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  max-width: 720px;
+  margin: 0 auto;
+  background: #ffffff;
+  box-shadow: 0 0 24px rgba(0, 0, 0, 0.06);
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #2e4053;
+  color: #ffffff;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.new-session-button {
+  flex-shrink: 0;
+  padding: 7px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 6px;
+  background: transparent;
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.new-session-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.new-session-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.chat-window {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.message-row {
+  display: flex;
+}
+
+.message-row.user {
+  justify-content: flex-end;
+}
+
+.message-row.agent {
+  justify-content: flex-start;
+}
+
+.message-bubble {
+  max-width: 75%;
+  padding: 10px 14px;
+  border-radius: 14px;
+  line-height: 1.45;
+  font-size: 0.95rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.message-bubble.user {
+  background: #2e4053;
+  color: #ffffff;
+  border-bottom-right-radius: 4px;
+}
+
+.message-bubble.agent {
+  background: #f0f1f3;
+  color: #1f2937;
+  border-bottom-left-radius: 4px;
+}
+
+.message-bubble a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.message-bubble.typing {
+  font-style: italic;
+  color: #6b7280;
+}
+
+.input-bar {
+  display: flex;
+  gap: 10px;
+  padding: 14px 16px;
+  border-top: 1px solid #e5e7eb;
+  background: #ffffff;
+}
+
+.input-bar textarea {
+  flex: 1;
+  resize: none;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  max-height: 120px;
+}
+
+.input-bar textarea:focus {
+  outline: none;
+  border-color: #2e4053;
+}
+
+.input-bar button {
+  padding: 0 18px;
+  border: none;
+  border-radius: 10px;
+  background: #2e4053;
+  color: #ffffff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.input-bar button:disabled {
+  background: #9aa5b1;
+  cursor: not-allowed;
+}

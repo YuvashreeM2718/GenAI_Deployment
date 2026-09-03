@@ -1,0 +1,5 @@
+mcp
+sqlalchemy
+psycopg[binary,pool]
+pydantic-settings
+reportlab
