@@ -1,0 +1,25 @@
+# Virtual environment
+env/
+.venv/
+venv/
+
+# Python cache and test files
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE and local configuration
+.vscode/
+.idea/
+*.swp
+
+# Generated quotation files
+*.pdf
+
+# Environment and local secrets
+.env
+.env.*
+!.env.example
