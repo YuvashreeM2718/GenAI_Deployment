@@ -1,0 +1,11 @@
+# NeMo Guardrails config. We use ONE input rail as a topical gate that runs BEFORE our router.
+# The self-check LLM decides whether a message is on-topic (orders/cart/products/tickets/company docs).
+models:
+  - type: main
+    engine: openai
+    model: gpt-4o-mini
+
+rails:
+  input:
+    flows:
+      - self check input

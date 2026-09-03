@@ -1,0 +1,58 @@
+[
+  {
+    "question": "What BLEU score did the Transformer achieve for English-to-German translation?",
+    "expected_route": "allowed",
+    "expected_keywords": [
+      "bleu",
+      "score"
+    ]
+  },
+  {
+    "question": "How long did it take to train the big Transformer model?",
+    "expected_route": "allowed",
+    "expected_keywords": [
+      "training",
+      "days"
+    ]
+  },
+  {
+    "question": "What is the training cost of the Transformer compared to previous models?",
+    "expected_route": "allowed",
+    "expected_keywords": [
+      "training",
+      "cost"
+    ]
+  },
+  {
+    "question": "What dropout rate was used for the big Transformer model in English-to-French translation?",
+    "expected_route": "allowed",
+    "expected_keywords": [
+      "dropout",
+      "rate"
+    ]
+  },
+  {
+    "question": "Which model achieved the highest BLEU score for English-to-French translation?",
+    "expected_route": "allowed",
+    "expected_keywords": [
+      "bleu",
+      "score"
+    ]
+  },
+  {
+    "question": "Who won the football world cup in 2018?",
+    "expected_route": "blocked"
+  },
+  {
+    "question": "Write me a Python script to scrape a website",
+    "expected_route": "blocked"
+  },
+  {
+    "question": "Who is the PM of India?",
+    "expected_route": "blocked"
+  },
+  {
+    "question": "Write a story about 'A Lion King'",
+    "expected_route": "blocked"
+  }
+]

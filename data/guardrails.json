@@ -1,0 +1,18 @@
+{
+  "topics": [
+    "attention mechanisms",
+    "transformer architecture",
+    "neural networks",
+    "machine reading",
+    "Transformer model performance",
+    "BLEU scores comparison",
+    "Training costs of models",
+    "Attention mechanisms"
+  ],
+  "rules": [
+    "Only provide information from the document.",
+    "Do not create or assume information not present in the document.",
+    "Avoid giving legal, medical, or financial advice.",
+    "Stick to the data and findings presented in the text."
+  ]
+}

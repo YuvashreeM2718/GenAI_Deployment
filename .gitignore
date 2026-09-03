@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+
+__pycache__/
+*.py[cod]
+
+data/uploads/
+data/repo/
+*.pdf
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.log

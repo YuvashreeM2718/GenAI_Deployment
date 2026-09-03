@@ -1,0 +1,3 @@
+# Fixed response returned whenever the input rail blocks an off-topic message.
+define bot refuse to respond
+  "I can only help with your questions answered by our company documents. Please ask me something about one of those."
